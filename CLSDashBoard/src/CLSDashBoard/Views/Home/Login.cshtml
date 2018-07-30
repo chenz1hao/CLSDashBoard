@@ -1,0 +1,55 @@
+﻿@{
+    Layout = null;
+    List<string> AreaNames = ViewBag.AreaNames as List<string>;
+}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>登录 - CLSDashBoard</title>
+
+    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/signin.css" rel="stylesheet">
+    <link href="~/css/combo.select.css" rel="stylesheet" />
+
+</head>
+
+<body>
+
+    <div class="container">
+        <form class="form-signin" method="post">
+            <h2 class="form-signin-heading text-center">CLS DashBoard</h2>
+            @*@Html.EditorFor(model => model.Uusername, new { htmlAttributes = new { @class = "form-control" } })*@
+            <div class="zzsc">
+                <select name="area">
+                    <option value="null">选择用户区域 / 搜索关键字</option>
+                    @foreach (var item in AreaNames)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </div>
+            密码
+            <input type="password" name="password" class="form-control"/>
+            <br />
+            <input class="btn btn-lg btn-primary btn-block" type="submit" value="登录" onclick="" id="submitBtn">
+        </form>
+        @if (TempData["tips"] != null)
+        {
+            <p style="color:red; text-align:center">@TempData["tips"]</p>
+        }
+    </div>
+    <!-- /container -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="~/js/jquery.combo.select.js"></script>
+    <script>
+        $(function() {
+	        $('select').comboSelect();
+        });
+    </script>
+</body>
+</html>

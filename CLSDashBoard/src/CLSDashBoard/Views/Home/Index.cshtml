@@ -1,0 +1,205 @@
+﻿@using CLSDashBoard.ViewModels;
+@{
+    Layout = null;
+
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>@ViewBag.AreaName - CLSDashBoard</title>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/echarts.js"></script>
+    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+body{
+        height:100%;
+    }
+
+    #content {
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    </style>
+</head>
+
+<body style="background-color:PowDerBlue;">
+    <div class="container-fluid" id="#content">
+        <div class="row">
+            <div class="col-md-7" id="tempPage">
+            </div>
+            <div class="col-md-5">
+                <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+                <div id="main" style="width: 600px;height:400px; border-bottom:1px dashed gray"></div>
+                <div id="main2" style="width: 600px; height:350px;"></div>
+
+
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var itemCount;
+        var page;
+        var interval;
+        var intervalChart;
+        var intervalChart2;
+        var fullVal;
+        var updateTime;
+        var AreaName = "@Html.Raw(ViewBag.AreaName)"
+        $(function () {
+            itemCount = @ViewBag.ItemCount; //从后端获取分拣的总条数，以便确定页数，来确定哪一页是最后一页特殊处理。
+            page = 0;
+            getData();
+            interval = window.setInterval("page++;getData();", 10000);
+            getChartData();
+            intervalChart = window.setInterval("getChartData();", 1000 * 60 * 60 * 24); //图标数据24小时更新一次
+            getChartData2();
+            intervalChart2 = window.setInterval("getChartData2();", 1000 * 60 * 60 * 24);
+        })
+        //function getChartData();
+        function getData() {
+            if(page * 10 + 10 < itemCount) //没有超过总条数，正常显示
+            {
+                fullVal = 1;
+            }else //超过了总条数，显示一部分，并且停止定时器
+            {
+                fullVal = 0;
+            }
+            $.ajax({
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: 'GetTable?page='+page+'&full='+fullVal, //full=1表示页面完整10条数据,0表示最后一页
+                success: function (result) {
+                    var str = '<table class="table" style="font-size:29px;"><h2>'+AreaName+'垃圾投放展板</h2><br><tr><th>序号</th><th>用户号</th><th>投放时间</th><th>投放类型</th><th>重量</th><th>积分</th></tr>';
+                    for (var i = 0; i < result.length; i++) {
+                        var timeStr =  result[i].time;
+                        var yearStr = timeStr.substr(0, 4);
+                        var monthStr = timeStr.substr(5, 2);
+                        var dayStr = timeStr.substr(8, 2);
+                        var hourStr = timeStr.substr(11,2);
+                        var minuteStr = timeStr.substr(14, 2);
+                        var secondStr = timeStr.substr(17, 2);
+                        timeStr = yearStr+"-"+monthStr +"-"+ dayStr+ " " + hourStr + ":"+minuteStr+":"+secondStr;
+                        var weightStr;
+                        if(result[i].weight >= 1000){
+                            weightStr = result[i].weight/1000 + "kg";
+                        }else{
+                            weightStr = result[i].weight + "g";
+                        }
+                        str += '<tr><td>' + (page * 10 + i + 1) + '</td><td>' + result[i].userNo+ '</td><td>' +  timeStr  + '</td><td>' + result[i].garbageTypeName + '</td><td>' + weightStr + '</td><td>' + result[i].bp+'</td></tr>';
+                    }
+                    str += '</table>';
+                    $('#tempPage').html(str);
+                    if(fullVal == 0){ //最后一页，初始化page，重置定时器
+                        clearInterval(interval);
+                        page = -1;
+                        interval = window.setInterval("page++;getData();", 10000);
+                    }
+                }
+            });
+        }
+        function getChartData(){
+            $.ajax({
+                type:"POST",
+                dataType: 'json',
+                contentType: 'application/json',
+                url:encodeURI("GetChartData?AreaName=" + AreaName), //第一个图标的数据
+                success: function(result){
+                    makeChart1(result);
+                }
+            });
+        }
+        function getChartData2(){
+            $.ajax({
+                type:"POST",
+                dataType: 'json',
+                contentType: 'application/json',
+                url:encodeURI("GetChartData2?AreaName=" + AreaName), //第一个图标的数据
+                success: function(result){
+                    makeChart2(result);
+                    updateTime = new Date();
+                }
+            });
+        }
+    </script>
+    @*饼状图JS*@
+    <script type="text/javascript">
+        function makeChart1(result){
+            // 基于准备好的dom，初始化echarts实例
+            var myChart = echarts.init(document.getElementById('main'));
+
+            // 指定图表的配置项和数据
+            option = {
+                title : {
+                    text: AreaName + '区域垃圾回收类型占比',
+                    x:'center'
+                },
+                series : [
+                    {
+                        name: '垃圾类型占比',
+                        type: 'pie',
+                        radius : '60%',
+                        center: ['50%', '60%'],
+                        data:result,
+                        label : {
+                            normal : {
+                                textStyle : {
+                                    fontWeight : 'normal',
+                                    fontSize : 25
+                                }
+                            }
+                        },
+                        itemStyle: {
+                            emphasis: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        }
+                    }
+                ]
+            };
+            myChart.setOption(option);
+        }
+    </script>
+    @*柱状图JS*@
+    <script type="text/javascript">
+        function makeChart2(result){
+                // 基于准备好的dom，初始化echarts实例
+            var myChart2 = echarts.init(document.getElementById('main2'));
+            var valArray = new Array();
+            var nameArray = new Array();
+            for(var i=0; i<result.length; i++){
+                valArray[i] = result[i].value;
+                nameArray[i] = result[i].name;
+            }
+            // 指定图表的配置项和数据
+            var option = {
+                title : {
+                    text: '投放次数TOP5',
+                    //subtext:'截止' + updateTime,
+                    x:'center'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: nameArray,
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [{
+                    data:valArray,
+                    type: 'bar',
+                }]
+            };
+            // 使用刚指定的配置项和数据显示图表。
+            myChart2.setOption(option);
+        }
+    </script>
+    </body>
+</html>
